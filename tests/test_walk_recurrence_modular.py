@@ -20,6 +20,8 @@ def test_recurrence_fibonacci_and_nonhomogeneous():
 def test_modular_arithmetic_examples():
     assert Modular.gcd(252, 105)[0] == 21
     assert Modular.modular_inverse(7, 26) == 15
+    assert Modular.modular_power(7, 13, 23) == pow(7, 13, 23)
+    assert Modular.modular_power_trace(7, 13, 23)[1]
     assert Modular.phi(9) == 6
     assert Modular.fermat_demo(2, 7) == 1
     assert Modular.chinese_remainder([2, 3, 2], [3, 5, 7])[:2] == (23, 105)

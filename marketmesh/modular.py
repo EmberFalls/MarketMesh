@@ -78,9 +78,26 @@ class ModularArithmeticEngine:
 
     @staticmethod
     def modular_power(base, exponent, modulus):
+        return ModularArithmeticEngine.modular_power_trace(base, exponent, modulus)[0]
+
+    @staticmethod
+    def modular_power_trace(base, exponent, modulus):
+        """Compute modular powers by repeated squaring and return worked steps."""
         if exponent < 0 or modulus <= 0:
             raise ValueError("Exponent must be nonnegative and modulus positive.")
-        return pow(base, exponent, modulus)
+        original_base, original_exponent = int(base), int(exponent)
+        result, factor, remaining = 1 % modulus, int(base) % modulus, int(exponent)
+        steps = [f"Initialize result = 1 mod {modulus} = {result}; base = {factor}; exponent = {remaining}."]
+        while remaining:
+            if remaining % 2:
+                result = (result * factor) % modulus
+                steps.append(f"Exponent {remaining} is odd: result = result × base mod {modulus} = {result}.")
+            remaining //= 2
+            if remaining:
+                factor = (factor * factor) % modulus
+                steps.append(f"Square base mod {modulus}: base = {factor}; halve exponent to {remaining}.")
+        steps.append(f"Therefore {original_base}^{original_exponent} mod {modulus} = {result}.")
+        return result, steps
 
     @classmethod
     def fermat_demo(cls, a, prime):
@@ -88,7 +105,7 @@ class ModularArithmeticEngine:
             raise ValueError("Fermat demonstration requires a prime modulus.")
         if a % prime == 0:
             raise ValueError("a must not be divisible by the prime modulus.")
-        return pow(a, prime - 1, prime)
+        return cls.modular_power(a, prime - 1, prime)
 
     @classmethod
     def chinese_remainder(cls, residues, moduli):

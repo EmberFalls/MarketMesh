@@ -122,10 +122,11 @@ def graph_figure(g, colors=None):
     node_trace = go.Scatter(
         x=[pos[n][0] for n in g.nodes], y=[pos[n][1] for n in g.nodes], mode="markers+text",
         text=list(g.nodes), textposition="top center", hovertext=[f"{n}<br>Degree: {degrees[n]}<br>Component: {component_map[n]}" for n in g.nodes], hoverinfo="text",
+        textfont=dict(color="#0f172a", size=13),
         marker=dict(size=[16 + 3 * degrees[n] for n in g.nodes], color=[colors.get(n, "#2563eb") if colors else "#2563eb" for n in g.nodes], line=dict(width=1, color="white")),
     )
     fig = go.Figure(edge_traces + [node_trace])
-    fig.update_layout(height=490, showlegend=False, margin=dict(l=10, r=10, t=10, b=10), xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white")
+    fig.update_layout(height=490, showlegend=False, margin=dict(l=10, r=10, t=10, b=10), xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white", paper_bgcolor="white")
     return fig
 
 
@@ -271,7 +272,7 @@ elif page == "Recurrence Lab":
 
 elif page == "Modular Cycle Analyzer":
     st.subheader("Modular Arithmetic and CRT Cycle Alignment")
-    gcd_tab, inverse_tab, phi_tab, fermat_tab, crt_tab = st.tabs(["GCD / Euclid", "Modular inverse", "Euler phi", "Fermat", "CRT cycle alignment"])
+    gcd_tab, inverse_tab, phi_tab, fermat_tab, power_tab, congruence_tab, crt_tab = st.tabs(["GCD / Euclid", "Modular inverse", "Euler phi", "Fermat", "Modular power", "Linear congruence", "CRT cycle alignment"])
     with gcd_tab:
         a, b = st.columns(2)
         gcd_a = a.number_input("a", value=252, step=1, key="gcd_a")
@@ -311,6 +312,26 @@ elif page == "Modular Cycle Analyzer":
                 st.write(f"Since p={fp} is prime and p does not divide a={fa}: a^(p−1) mod p = {value} (expected 1).")
             except ValueError as exc:
                 st.error(str(exc))
+    with power_tab:
+        st.write("Repeated squaring computes powers efficiently while keeping each intermediate residue visible.")
+        power_base = st.number_input("Base a", value=7, step=1, key="power_base")
+        power_exponent = st.number_input("Exponent e", min_value=0, value=13, step=1, key="power_exponent")
+        power_modulus = st.number_input("Modulus m", min_value=1, value=23, step=1, key="power_modulus")
+        power_result, power_steps = Modular.modular_power_trace(int(power_base), int(power_exponent), int(power_modulus))
+        st.success(f"{int(power_base)}^{int(power_exponent)} ≡ {power_result} (mod {int(power_modulus)})")
+        st.code("\n".join(power_steps))
+    with congruence_tab:
+        st.write("Solve a·x ≡ b (mod m). If gcd(a,m) divides b, there are gcd(a,m) residue solutions modulo m.")
+        congruence_a = st.number_input("Coefficient a", value=4, step=1, key="congruence_a")
+        congruence_b = st.number_input("Right side b", value=2, step=1, key="congruence_b")
+        congruence_m = st.number_input("Modulus m", min_value=1, value=6, step=1, key="congruence_m")
+        congruence_solutions = Modular.solve_congruence(int(congruence_a), int(congruence_b), int(congruence_m))
+        congruence_gcd = Modular.gcd(int(congruence_a), int(congruence_m))[0]
+        if congruence_solutions:
+            st.success(f"gcd({int(congruence_a)}, {int(congruence_m)}) = {congruence_gcd} divides {int(congruence_b)}; solutions modulo {int(congruence_m)}: {congruence_solutions}")
+            st.caption("Divide the equation by the gcd, invert the reduced coefficient modulo the reduced modulus, then list the gcd distinct residues.")
+        else:
+            st.warning(f"No solution: gcd({int(congruence_a)}, {int(congruence_m)}) = {congruence_gcd} does not divide {int(congruence_b)}.")
     with crt_tab:
         st.write("Find the first time several simulated cycles align: x ≡ rᵢ (mod mᵢ). Use pairwise-coprime moduli.")
         residues = [st.number_input(f"Residue r{i+1}", value=r, step=1, key=f"crt_r{i}") for i, r in enumerate([1, 3, 2])]

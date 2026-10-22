@@ -30,7 +30,7 @@ Demonstrate how discrete mathematics concepts can be applied to stock relationsh
 - `marketmesh/graph_algorithms.py`: BFS, DFS, paths, cycles, Euler checks, Hamiltonian backtracking, trees, bipartite coloring.
 - `marketmesh/walk_analysis.py` and `generating_function.py`: binary adjacency powers, walk sequences, finite generating polynomials.
 - `marketmesh/recurrence.py`: second-order linear recurrence simulator.
-- `marketmesh/modular.py`: Euclid, extended Euclid, inverse, primes, phi, Fermat, congruences, and CRT.
+- `marketmesh/modular.py`: Euclid, extended Euclid, inverse, repeated-squaring modular power, primes, phi, Fermat, congruences, and CRT.
 - `marketmesh/stress_test.py`: vertex and edge removal comparisons.
 - `app.py`: Streamlit user interface and interactive graph visualization.
 
@@ -79,3 +79,9 @@ The unit tests cover CSV cleaning and alignment, graph algorithms, walk counts, 
 ## Future extensions
 
 Rolling correlation networks, directed lagged relationships, weighted path analysis, centrality measures, live data providers, and exportable reports can be considered after the core educational application.
+
+## Screenshot
+
+The default dashboard visualizes the selected historical relationship network:
+
+![MarketMesh historical relationship network](assets/dashboard-network.png)
