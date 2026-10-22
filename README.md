@@ -4,7 +4,7 @@
 
 MarketMesh turns selected stock closing-price series into a graph by calculating daily returns, comparing Pearson correlations, and adding an undirected edge when a selected threshold is met. It then demonstrates graph theory, recurrence relations, generating functions, and modular arithmetic in one classroom application.
 
-This is an educational discrete mathematics project. It does not predict prices, provide trading recommendations, optimize portfolios, or connect to a brokerage. Included CSV data is synthetic and is labeled as such throughout the application.
+This is an educational discrete mathematics project. It does not predict prices, provide trading recommendations, optimize portfolios, or connect to a brokerage. Included CSV files contain historical NSE data; separately generated examples in `data/synthetic-demo/` are synthetic and labeled as such.
 
 ## Problem statement
 

@@ -1,6 +1,7 @@
 """Streamlit classroom application for MarketMesh."""
 
 from datetime import date
+import hashlib
 from pathlib import Path
 
 import networkx as nx
@@ -30,7 +31,7 @@ SECTORS = {
 st.set_page_config(page_title="MarketMesh", page_icon="🕸️", layout="wide")
 st.title("MarketMesh")
 st.caption("A Discrete Mathematics-Based Stock Market Network Analyzer")
-st.info("Classroom demo data is synthetic. This application demonstrates historical-style mathematical analysis, not stock forecasts or financial advice.")
+st.info("Included CSVs contain historical NSE data. This application demonstrates historical mathematical analysis, not stock forecasts or financial advice.")
 
 with st.sidebar:
     st.header("Network inputs")
@@ -39,7 +40,7 @@ with st.sidebar:
     manager = StockDataManager(ROOT / "data", uploaded_csvs=uploaded_csvs)
     available = manager.available_stocks()
     if uploaded_csvs:
-        st.caption("Uploaded CSVs override demo files with the same filename symbol.")
+        st.caption("Uploaded CSVs override local data files with the same filename symbol.")
     if not available:
         st.error("No stock CSV files found or uploaded.")
         st.stop()
@@ -65,15 +66,38 @@ if len(selected) < 2:
     st.warning("Select at least two stocks.")
     st.stop()
 
+upload_fingerprint = hashlib.blake2b(digest_size=16)
+for symbol, content in sorted(uploaded_csvs.items()):
+    upload_fingerprint.update(symbol.encode("utf-8"))
+    upload_fingerprint.update(content)
+analysis_signature = (tuple(selected), start.isoformat(), end.isoformat(), float(threshold), bool(include_negative), upload_fingerprint.hexdigest())
 try:
-    prices = manager.align_close_prices(selected, start, end)
-    returns = manager.calculate_returns(prices)
-    if len(returns) < 2:
-        st.warning("Not enough overlapping historical data for this stock selection and date range. Choose a broader period.")
-        st.stop()
-    correlations = RelationshipAnalyzer.correlation_matrix(returns)
-    stock_graph = StockGraph()
-    graph = stock_graph.build_graph(selected, correlations, threshold, include_negative)
+    if st.session_state.get("marketmesh_analysis_signature") != analysis_signature:
+        prices = manager.align_close_prices(selected, start, end)
+        returns = manager.calculate_returns(prices)
+        if len(returns) < 2:
+            st.warning("Not enough overlapping historical data for this stock selection and date range. Choose a broader period.")
+            st.stop()
+        correlations = RelationshipAnalyzer.correlation_matrix(returns)
+        stock_graph = StockGraph()
+        graph = stock_graph.build_graph(selected, correlations, threshold, include_negative)
+        st.session_state.update({
+            "marketmesh_analysis_signature": analysis_signature,
+            "marketmesh_selected_stocks": list(selected),
+            "marketmesh_date_range": (start, end),
+            "marketmesh_threshold": float(threshold),
+            "marketmesh_returns": returns,
+            "marketmesh_correlation_matrix": correlations,
+            "marketmesh_graph": graph,
+            "marketmesh_stock_graph": stock_graph,
+            "marketmesh_prices": prices,
+        })
+    else:
+        prices = st.session_state["marketmesh_prices"]
+        returns = st.session_state["marketmesh_returns"]
+        correlations = st.session_state["marketmesh_correlation_matrix"]
+        graph = st.session_state["marketmesh_graph"]
+        stock_graph = st.session_state["marketmesh_stock_graph"]
 except (ValueError, FileNotFoundError) as exc:
     st.error(str(exc))
     st.stop()
@@ -194,7 +218,8 @@ elif page == "Graph Analysis":
     sector_graph = nx.Graph()
     sector_graph.add_edges_from((symbol, SECTORS.get(symbol, "Other")) for symbol in selected)
     coloring = GraphAlgorithms.bipartite_coloring(sector_graph)
-    st.write("This separate semantic graph connects stocks to sector labels. Its two color classes are:")
+    st.write("This is bipartite because every edge joins a stock vertex to a sector vertex; no edge joins two stocks or two sectors. That gives a valid two-coloring with no adjacent vertices sharing a color.")
+    st.write("Its two color classes are:")
     st.write({"Class 1": sorted(n for n, color in coloring.items() if color == 0), "Class 2": sorted(n for n, color in coloring.items() if color == 1)})
 
 elif page == "Walks & Generating Functions":
@@ -220,17 +245,23 @@ elif page == "Walks & Generating Functions":
 elif page == "Recurrence Lab":
     st.subheader("Recurrence Relation Laboratory")
     st.write("This module demonstrates how recurrence relations generate discrete sequences that can be compared mathematically with historical patterns. These sequences are not stock forecasts.")
-    preset = st.selectbox("Preset", ["Fibonacci", "Custom second-order recurrence"])
+    preset = st.selectbox("Preset", ["Fibonacci", "Second-order homogeneous recurrence", "First-order non-homogeneous recurrence", "Custom supported recurrence"])
     if preset == "Fibonacci":
         c1, c2, constant, a0, a1 = 1, 1, 0, 0, 1
         st.code("a₀ = 0, a₁ = 1; aₙ = aₙ₋₁ + aₙ₋₂")
     else:
+        defaults = {
+            "Second-order homogeneous recurrence": (2, -1, 0, 1, 2),
+            "First-order non-homogeneous recurrence": (2, 0, 3, 1, 0),
+            "Custom supported recurrence": (1, 1, 0, 0, 1),
+        }
+        d1, d2, dd, da0, da1 = defaults[preset]
         controls = st.columns(5)
-        c1 = controls[0].number_input("c₁", value=1, step=1)
-        c2 = controls[1].number_input("c₂", value=1, step=1)
-        constant = controls[2].number_input("Constant d", value=0, step=1)
-        a0 = controls[3].number_input("a₀", value=0, step=1)
-        a1 = controls[4].number_input("a₁", value=1, step=1)
+        c1 = controls[0].number_input("c₁", value=d1, step=1)
+        c2 = controls[1].number_input("c₂", value=d2, step=1)
+        constant = controls[2].number_input("Constant d", value=dd, step=1)
+        a0 = controls[3].number_input("a₀", value=da0, step=1)
+        a1 = controls[4].number_input("a₁", value=da1, step=1)
     nterms = st.slider("Number of terms", 2, 40, 12)
     result = RecurrenceSolver.describe(int(c1), int(c2), int(constant), int(a0), int(a1), nterms)
     st.latex(result["equation"])
@@ -251,6 +282,12 @@ elif page == "Modular Cycle Analyzer":
         st.success(f"gcd({int(gcd_a)}, {int(gcd_b)}) = {gcd_value}")
         g, x, y = Modular.extended_gcd(int(gcd_a), int(gcd_b))
         st.caption(f"Extended Euclid: {gcd_a}({x}) + {gcd_b}({y}) = {g}")
+        divisor = st.number_input("Check whether d divides n", value=3, step=1, key="divisor_d")
+        dividend = st.number_input("Integer n", value=252, step=1, key="dividend_n")
+        if divisor == 0:
+            st.warning("A divisor must be nonzero.")
+        else:
+            st.write(f"{int(divisor)} {'divides' if Modular.divides(int(divisor), int(dividend)) else 'does not divide'} {int(dividend)}" + (f" (quotient {int(dividend)//int(divisor)})" if Modular.divides(int(divisor), int(dividend)) else f" (remainder {int(dividend)%int(divisor)})"))
     with inverse_tab:
         inverse_a = st.number_input("a", value=7, step=1, key="inv_a")
         inverse_m = st.number_input("Modulus m", value=26, min_value=2, step=1)
@@ -282,7 +319,9 @@ elif page == "Modular Cycle Analyzer":
             try:
                 solution, modulus, details = Modular.chinese_remainder(list(map(int, residues)), list(map(int, moduli)))
                 st.success(f"x ≡ {solution} (mod {modulus}); first nonnegative alignment is {solution}.")
-                st.dataframe(pd.DataFrame(details), hide_index=True, width="stretch")
+                st.markdown(f"For moduli {list(map(int, moduli))}, the product is `M = {modulus}`. For each row, `Mᵢ = M/mᵢ`, `yᵢ` is the inverse of `Mᵢ modulo mᵢ`, and the row contributes `rᵢMᵢyᵢ`.")
+                st.dataframe(pd.DataFrame([{"rᵢ": row["residue"], "mᵢ": row["modulus"], "Mᵢ = M/mᵢ": row["partial"], "yᵢ = Mᵢ⁻¹ mod mᵢ": row["inverse"], "rᵢMᵢyᵢ": row["term"]} for row in details]), hide_index=True, width="stretch")
+                st.write(f"`x = Σ(rᵢMᵢyᵢ) mod M = {sum(row['term'] for row in details)} mod {modulus} = {solution}`.")
                 st.caption("Each congruence is a simulated repeating event pattern, not a claim that real stock prices are periodic. The combined period is the product of the pairwise-coprime cycle lengths.")
             except ValueError as exc:
                 st.error(str(exc))
@@ -319,11 +358,32 @@ elif page == "Stress Test":
 else:
     st.subheader("Discrete Mathematics Guide")
     st.write("Each feature answers two questions: which mathematical concept is used, and what it means in the current selected stock network.")
-    for concept, explanation in CONCEPTS.items():
+    degree_map = dict(graph.degree())
+    components = list(nx.connected_components(graph))
+    walk_example = WalkAnalyzer(graph).count_walks(selected[0], selected[1], 3)
+    example_map = {
+        "Daily return and correlation": f"For this selected period, {selected[0]} and {selected[1]} have return correlation {correlations.loc[selected[0], selected[1]]:.3f}; edge status is {'present' if graph.has_edge(selected[0], selected[1]) else 'absent'} at threshold {threshold:.2f}.",
+        "Vertex degree": f"{max(degree_map, key=degree_map.get) if degree_map else 'No vertex'} has the highest degree ({max(degree_map.values(), default=0)}).",
+        "Connected components": f"This graph has {len(components)} component(s), with sizes {[len(group) for group in components]}.",
+        "Adjacency and incidence matrices": f"The displayed binary matrix is {len(graph)}×{len(graph)} and contains {2 * graph.number_of_edges()} ones for {graph.number_of_edges()} undirected edges.",
+        "Traversal, paths, and cycles": f"From {selected[0]}, BFS reaches {len(GraphAlgorithms.bfs(graph, selected[0]))} of {len(graph)} vertices; the graph has {len(GraphAlgorithms.cycles(graph))} cycle-basis element(s).",
+        "Euler and Hamiltonian properties": f"Current degrees are {degree_map}; Euler analysis reports {len(GraphAlgorithms.euler_analysis(graph)['odd_vertices'])} odd-degree vertices.",
+        "Trees and bipartite graphs": f"The selected stock graph is {'a tree' if GraphAlgorithms.is_tree(graph) else 'not a tree'}; the sector graph is two-colorable because every edge crosses stock and sector classes.",
+        "Walk counts and adjacency powers": f"From {selected[0]} to {selected[1]}, length 0–3 walk counts are {walk_example}.",
+        "Ordinary generating function": f"For that same walk sequence, the truncated polynomial is {GeneratingFunctionEngine.polynomial(walk_example)}.",
+        "Recurrence relations": f"Fibonacci starts with a₀=0, a₁=1 and aₙ=aₙ₋₁+aₙ₋₂; its first six terms are {RecurrenceSolver.fibonacci(6)}.",
+        "Divisibility and Euclidean algorithms": f"For the displayed GCD inputs {int(st.session_state.get('gcd_a', 252))} and {int(st.session_state.get('gcd_b', 105))}, gcd is {Modular.gcd(int(st.session_state.get('gcd_a', 252)), int(st.session_state.get('gcd_b', 105)))[0]}; 3 divides 252.",
+        "Modular inverse and congruences": f"For example, 7×15≡1 (mod 26), so 15 is the inverse of 7 modulo 26; 4x≡2 (mod 6) has residues {Modular.solve_congruence(4, 2, 6)}.",
+        "Primes, Euler phi, and Fermat": f"For n=9, φ(9)={Modular.phi(9)}; since 7 is prime, 2⁶≡{Modular.fermat_demo(2, 7)} (mod 7).",
+        "Chinese Remainder Theorem": f"The example x≡1 (mod 4), x≡3 (mod 5), x≡2 (mod 7) gives x≡{Modular.chinese_remainder([1, 3, 2], [4, 5, 7])[0]} (mod 140).",
+        "Graph stress test": f"Removing an edge or vertex from this graph recomputes component, reachability, and cycle metrics for comparison.",
+    }
+    for concept, details in CONCEPTS.items():
         with st.expander(concept):
-            st.write(explanation)
-            if concept == "Vertex degree":
-                st.write(f"Current example: highest degree = {max(dict(graph.degree()).values(), default=0)} in the selected graph.")
+            st.markdown(f"**Definition:** {details['definition']}")
+            st.markdown(f"**How MarketMesh uses it:** {details['use']}")
+            st.markdown(f"**Formula / algorithm:** {details['method']}")
+            st.markdown(f"**Current example:** {example_map[concept]}")
     st.markdown("#### Syllabus coverage")
     st.markdown("- **Unit 4:** recurrence relations, Fibonacci sequence, graph walk counts, truncated ordinary generating polynomials.\n- **Unit 5:** divisibility, Euclidean and extended Euclidean algorithms, modular inverse, primes, factorization, Euler phi, Fermat’s Little Theorem, congruences, CRT.\n- **Unit 6:** graph representations, degree, components, BFS/DFS, paths, cycles, Euler/Hamiltonian properties, trees, bipartite graphs, stress testing.")
 
