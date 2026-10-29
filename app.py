@@ -250,22 +250,33 @@ elif page == "Recurrence Lab":
     if preset == "Fibonacci":
         c1, c2, constant, a0, a1 = 1, 1, 0, 0, 1
         st.code("a₀ = 0, a₁ = 1; aₙ = aₙ₋₁ + aₙ₋₂")
+        initial_values = "Initial values: a₀ = 0, a₁ = 1"
+        first_order = False
+    elif preset == "First-order non-homogeneous recurrence":
+        controls = st.columns(3)
+        c1 = controls[0].number_input("c₁", value=2, step=1, key="recurrence_first_c1")
+        constant = controls[1].number_input("Constant d", value=3, step=1, key="recurrence_first_d")
+        a0 = controls[2].number_input("a₀", value=1, step=1, key="recurrence_first_a0")
+        initial_values = f"Initial value: a₀ = {int(a0)}"
+        first_order = True
     else:
         defaults = {
             "Second-order homogeneous recurrence": (2, -1, 0, 1, 2),
-            "First-order non-homogeneous recurrence": (2, 0, 3, 1, 0),
             "Custom supported recurrence": (1, 1, 0, 0, 1),
         }
         d1, d2, dd, da0, da1 = defaults[preset]
         controls = st.columns(5)
-        c1 = controls[0].number_input("c₁", value=d1, step=1)
-        c2 = controls[1].number_input("c₂", value=d2, step=1)
-        constant = controls[2].number_input("Constant d", value=dd, step=1)
-        a0 = controls[3].number_input("a₀", value=da0, step=1)
-        a1 = controls[4].number_input("a₁", value=da1, step=1)
+        c1 = controls[0].number_input("c₁", value=d1, step=1, key=f"{preset}_c1")
+        c2 = controls[1].number_input("c₂", value=d2, step=1, key=f"{preset}_c2")
+        constant = controls[2].number_input("Constant d", value=dd, step=1, key=f"{preset}_d")
+        a0 = controls[3].number_input("a₀", value=da0, step=1, key=f"{preset}_a0")
+        a1 = controls[4].number_input("a₁", value=da1, step=1, key=f"{preset}_a1")
+        initial_values = f"Initial values: a₀ = {int(a0)}, a₁ = {int(a1)}"
+        first_order = False
     nterms = st.slider("Number of terms", 2, 40, 12)
-    result = RecurrenceSolver.describe(int(c1), int(c2), int(constant), int(a0), int(a1), nterms)
+    result = RecurrenceSolver.describe_first_order(int(c1), int(constant), int(a0), nterms) if first_order else RecurrenceSolver.describe(int(c1), int(c2), int(constant), int(a0), int(a1), nterms)
     st.latex(result["equation"])
+    st.caption(initial_values)
     st.write(f"Order: {result['order']} · Linear: Yes · Homogeneous: {'Yes' if result['homogeneous'] else 'No'}")
     st.write("Sequence:", result["sequence"])
     st.plotly_chart(go.Figure(go.Scatter(x=list(range(nterms)), y=result["sequence"], mode="lines+markers", name="aₙ")).update_layout(xaxis_title="n", yaxis_title="aₙ", height=350), width="stretch")

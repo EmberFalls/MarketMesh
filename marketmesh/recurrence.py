@@ -1,7 +1,22 @@
-"""Second-order linear recurrence simulator."""
+"""First- and second-order linear recurrence simulators."""
 
 
 class RecurrenceSolver:
+    @staticmethod
+    def generate_first_order(coefficient: int, constant: int, a0: int, terms: int):
+        if terms < 1 or terms > 100:
+            raise ValueError("Choose between 1 and 100 terms.")
+        sequence = [int(a0)]
+        while len(sequence) < terms:
+            sequence.append(int(coefficient * sequence[-1] + constant))
+        return sequence
+
+    @staticmethod
+    def describe_first_order(coefficient: int, constant: int, a0: int, terms: int):
+        sequence = RecurrenceSolver.generate_first_order(coefficient, constant, a0, terms)
+        equation = rf"a_n = {coefficient}a_{{n-1}}" + (f" + {constant}" if constant else "")
+        return {"equation": equation, "order": 1, "homogeneous": constant == 0, "linear": True, "sequence": sequence}
+
     @staticmethod
     def generate(c1: int, c2: int, constant: int, a0: int, a1: int, terms: int):
         if terms < 1 or terms > 100:

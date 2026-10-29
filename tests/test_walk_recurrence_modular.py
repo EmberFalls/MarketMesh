@@ -15,6 +15,9 @@ def test_walk_counts_and_generating_polynomial():
 def test_recurrence_fibonacci_and_nonhomogeneous():
     assert RecurrenceSolver.fibonacci(7) == [0, 1, 1, 2, 3, 5, 8]
     assert RecurrenceSolver.generate(2, 0, 3, 1, 0, 5) == [1, 0, 3, 9, 21]
+    first_order = RecurrenceSolver.describe_first_order(2, 3, 1, 5)
+    assert first_order["sequence"] == [1, 5, 13, 29, 61]
+    assert first_order["order"] == 1 and not first_order["homogeneous"]
 
 
 def test_modular_arithmetic_examples():

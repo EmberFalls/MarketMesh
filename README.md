@@ -29,7 +29,7 @@ Demonstrate how discrete mathematics concepts can be applied to stock relationsh
 - `marketmesh/graph_engine.py`: graph construction, adjacency and incidence matrices.
 - `marketmesh/graph_algorithms.py`: BFS, DFS, paths, cycles, Euler checks, Hamiltonian backtracking, trees, bipartite coloring.
 - `marketmesh/walk_analysis.py` and `generating_function.py`: binary adjacency powers, walk sequences, finite generating polynomials.
-- `marketmesh/recurrence.py`: second-order linear recurrence simulator.
+- `marketmesh/recurrence.py`: first- and second-order linear recurrence simulators.
 - `marketmesh/modular.py`: Euclid, extended Euclid, inverse, repeated-squaring modular power, primes, phi, Fermat, congruences, and CRT.
 - `marketmesh/stress_test.py`: vertex and edge removal comparisons.
 - `app.py`: Streamlit user interface and interactive graph visualization.
